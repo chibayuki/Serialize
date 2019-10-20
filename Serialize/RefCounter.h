@@ -2,16 +2,16 @@
 Copyright © 2019 chibayuki@foxmail.com
 
 RefCounter
-Version 19.10.20.0000
+Version 19.10.21.0000
 
-This file is part of Serialize
+This file is part of RefCounter
 
-Serialize is released under the GPLv3 license
+RefCounter is released under the GPLv3 license
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #pragma once
 
-// 支持引用计数的指针
+// 支持引用计数与垃圾回收的指针
 template <typename T> class Ref
 {
 private:
@@ -20,29 +20,23 @@ private:
 
 	inline void _Increase()
 	{
-		(*_Count)++;
+		if (_Ptr)
+		{
+			(*_Count)++;
+		}
 	}
 
 	inline void _Decrease()
 	{
-		(*_Count)--;
-	}
-
-	inline bool _NoRef() const
-	{
-		return (*_Count == 0);
-	}
-
-	inline void _Dispose()
-	{
 		if (_Ptr)
 		{
-			delete _Ptr;
-		}
+			(*_Count)--;
 
-		if (_Count)
-		{
-			delete _Count;
+			if (*_Count == 0)
+			{
+				delete _Ptr;
+				delete _Count;
+			}
 		}
 	}
 
@@ -72,10 +66,7 @@ public:
 		_Ptr = ref._Ptr;
 		_Count = ref._Count;
 
-		if (_Ptr)
-		{
-			_Increase();
-		}
+		_Increase();
 	}
 
 	Ref& operator=(const Ref& ref)
@@ -90,23 +81,12 @@ public:
 			return *this;
 		}
 
-		if (_Ptr)
-		{
-			_Decrease();
-
-			if (_NoRef())
-			{
-				_Dispose();
-			}
-		}
+		_Decrease();
 
 		_Ptr = ref._Ptr;
 		_Count = ref._Count;
 
-		if (_Ptr)
-		{
-			_Increase();
-		}
+		_Increase();
 
 		return *this;
 	}
@@ -114,11 +94,6 @@ public:
 	~Ref()
 	{
 		_Decrease();
-
-		if (_NoRef())
-		{
-			_Dispose();
-		}
 	}
 
 	inline bool operator==(const Ref& ref) const
@@ -141,7 +116,7 @@ public:
 		return *_Ptr;
 	}
 
-	inline	T* operator->()
+	inline T* operator->()
 	{
 		return _Ptr;
 	}
