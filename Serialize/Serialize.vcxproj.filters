@@ -26,8 +26,11 @@
     <ClCompile Include="Demo.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="RefCounter.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="Serialize.cpp">
-      <Filter>头文件</Filter>
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
