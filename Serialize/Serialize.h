@@ -221,6 +221,8 @@ class Serializer
 		Void, // void（不支持）
 		Null, // std::nullptr_t（不支持）
 
+		Binary, // Ref<Chunk>
+
 		Arithmetic, // 基本数据类型
 		Enum, // 枚举
 		Struct, // 结构体与类
@@ -232,6 +234,7 @@ class Serializer
 		Object, // 对象（不支持）
 
 		String, // std::string
+
 		List, // std::list
 		Map, // std::map
 		Set, // std::set
@@ -240,7 +243,11 @@ class Serializer
 
 	template<typename T> DataType GetDataType()
 	{
-		if (is_same<T, string>::value)
+		if (is_same<T, ChunkRef>::value)
+		{
+			return Binary;
+		}
+		else if (is_same<T, string>::value)
 		{
 			return String;
 		}
@@ -424,6 +431,58 @@ private:
 		}
 	}
 
+	Serializer& PackBinary(const ChunkRef& data)
+	{
+		DataType dt = GetDataType<ChunkRef>();
+
+		if (_ChunkBuilder.IsEmpty())
+		{
+			PackStart();
+		}
+
+		size_t sT = data->Size();
+
+		_ChunkBuilder.Append(data);
+
+		Metadata md(dt, sT);
+
+		_Metadata.push_back(md);
+
+		return *this;
+	}
+
+	Serializer& UnpackBinary(ChunkRef& data)
+	{
+		if (_Ptr)
+		{
+			DataType dt = GetDataType<ChunkRef>();
+
+			Metadata md = _Metadata.front();
+
+			if (dt == md.Type)
+			{
+				size_t sT = md.Size;
+
+				if (_Index + sT <= _Chunk->Size())
+				{
+					data = new Chunk(sT, _Ptr);
+				}
+
+				_Index += sT;
+				_Ptr += sT;
+
+				_Metadata.pop_front();
+
+				if (_Metadata.empty() || _Index >= _Chunk->Size())
+				{
+					UnpackFinish();
+				}
+			}
+		}
+
+		return *this;
+	}
+
 	template<typename T> Serializer& PackStruct(const T& data)
 	{
 		DataType dt = GetDataType<T>();
@@ -471,7 +530,7 @@ private:
 
 					_Metadata.pop_front();
 
-					if (_Metadata.empty())
+					if (_Metadata.empty() || _Index >= _Chunk->Size())
 					{
 						UnpackFinish();
 					}
@@ -516,11 +575,7 @@ private:
 
 				if (_Index + sT <= _Chunk->Size())
 				{
-					char* str = new char[sT];
-
-					memcpy(str, _Ptr, sT);
-
-					data = string(str, sT - 1);
+					data = string((char*)_Ptr, sT - 1);
 				}
 
 				_Index += sT;
@@ -528,7 +583,7 @@ private:
 
 				_Metadata.pop_front();
 
-				if (_Metadata.empty())
+				if (_Metadata.empty() || _Index >= _Chunk->Size())
 				{
 					UnpackFinish();
 				}
@@ -553,24 +608,51 @@ public:
 		_Dispose();
 	}
 
-	inline Serializer& Pack(ChunkRef& chunk)
+	inline Serializer& ToBinary(ChunkRef& chunk)
 	{
 		return PackFinish(chunk);
 	}
 
-	inline Serializer& operator>>(ChunkRef& chunk)
+	inline Serializer& ToBinary(size_t& size, byte*& ptr)
 	{
-		return PackFinish(chunk);
+		ChunkRef chunk;
+
+		Serializer& ser = PackFinish(chunk);
+
+		size = chunk->Size();
+		ptr = const_cast<byte*>(chunk->Ptr());
+
+		return ser;
 	}
 
-	inline Serializer& Unpack(const ChunkRef& chunk)
+	inline Serializer& FromBinary(const ChunkRef& chunk)
 	{
 		return UnpackStart(chunk);
+	}
+
+	inline Serializer& FromBinary(const size_t size, const byte* ptr)
+	{
+		return UnpackStart(new Chunk(size, ptr));
+	}
+
+	inline Serializer& Pack(const ChunkRef& chunk)
+	{
+		return PackBinary(chunk);
 	}
 
 	inline Serializer& operator<<(const ChunkRef& chunk)
 	{
-		return UnpackStart(chunk);
+		return PackBinary(chunk);
+	}
+
+	inline Serializer& Unpack(ChunkRef& chunk)
+	{
+		return UnpackBinary(chunk);
+	}
+
+	inline Serializer& operator>>(ChunkRef& chunk)
+	{
+		return UnpackBinary(chunk);
 	}
 
 	template<typename T> inline Serializer& Pack(const T& data)

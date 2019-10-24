@@ -36,8 +36,8 @@ int main()
 
 	ChunkRef cr;
 
-	Serializer sr1;
-	sr1 << i1 << c1 << ms << s1 << b1 >> cr;
+	Serializer ser1;
+	(ser1 << i1 << c1 << ms << s1 << b1).ToBinary(cr);
 
 	ms.d1 = 0;
 	ms.l1 = 0;
@@ -46,8 +46,8 @@ int main()
 	s1 = "";
 	b1 = false;
 
-	Serializer sr2;
-	sr2 << cr >> i1 >> c1 >> ms >> s1 >> b1;
+	Serializer ser2;
+	ser2.FromBinary(cr) >> i1 >> c1 >> ms >> s1 >> b1;
 
 	cout << i1 << endl;
 	cout << c1 << endl;
