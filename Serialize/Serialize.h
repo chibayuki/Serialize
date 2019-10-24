@@ -2,7 +2,7 @@
 Copyright © 2019 chibayuki@foxmail.com
 
 Serialize
-Version 19.10.20.0000
+Version 19.10.25.0000
 
 This file is part of Serialize
 
@@ -442,7 +442,7 @@ private:
 
 		size_t sT = data->Size();
 
-		_ChunkBuilder.Append(data);
+		_ChunkBuilder.Append(data.ShallowCopy());
 
 		Metadata md(dt, sT);
 
@@ -620,7 +620,9 @@ public:
 		Serializer& ser = PackFinish(chunk);
 
 		size = chunk->Size();
-		ptr = const_cast<byte*>(chunk->Ptr());
+		ptr = new byte[size];
+
+		memcpy(ptr, chunk->Ptr(), size);
 
 		return ser;
 	}
@@ -730,4 +732,10 @@ public:
 	{
 		_Dispose();
 	}
+
+protected:
+	virtual void Serialize(ChunkRef& chunk) = 0;
+	virtual void Serialize(size_t& size, byte*& ptr) = 0;
+	virtual void Deserialize(const ChunkRef& chunk) = 0;
+	virtual void Deserialize(const size_t size, const byte* ptr) = 0;
 };

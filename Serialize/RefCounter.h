@@ -2,7 +2,7 @@
 Copyright © 2019 chibayuki@foxmail.com
 
 RefCounter
-Version 19.10.23.0000
+Version 19.10.25.0000
 
 This file is part of RefCounter
 
@@ -301,5 +301,44 @@ public:
 	inline operator T() const
 	{
 		return *_Ptr;
+	}
+
+	Ref RefCopy() const
+	{
+		return Ref(_Ptr);
+	}
+
+	Ref BinaryCopy() const
+	{
+		Ref ref;
+
+		if (_Ptr)
+		{
+			ref._Decrease();
+
+			ref._Ptr = new T();
+			memcpy(ref._Ptr, _Ptr, sizeof(T));
+
+			ref._Increase();
+		}
+
+		return ref;
+	}
+
+	Ref ShallowCopy() const
+	{
+		Ref ref;
+
+		if (_Ptr)
+		{
+			ref._Decrease();
+
+			ref._Ptr = new T();
+			*ref._Ptr = *_Ptr;
+
+			ref._Increase();
+		}
+
+		return ref;
 	}
 };
