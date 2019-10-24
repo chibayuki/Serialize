@@ -20,80 +20,18 @@ class RefCounter
 {
 private:
 	static map<void*, size_t> _Obj;
+
 	using pair = map<void*, size_t>::value_type;
 	using iterator = map<void*, size_t>::iterator;
 
 protected:
-	RefCounter()
-	{
-	}
+	RefCounter();
+	RefCounter(const RefCounter&);
+	RefCounter& operator=(const RefCounter&);
+	virtual ~RefCounter();
 
-	RefCounter(const RefCounter&)
-	{
-	}
-
-	RefCounter& operator=(const RefCounter&)
-	{
-		return *this;
-	}
-
-	virtual ~RefCounter()
-	{
-	}
-
-	size_t Increase(void* ptr)
-	{
-		if (_Obj.empty())
-		{
-			_Obj.insert(pair(ptr, 1));
-
-			return 1;
-		}
-		else
-		{
-			iterator i = _Obj.find(ptr);
-
-			if (i == _Obj.end())
-			{
-				_Obj.insert(pair(ptr, 1));
-
-				return 1;
-			}
-			else
-			{
-				i->second++;
-
-				return i->second;
-			}
-		}
-	}
-
-	size_t Decrease(void* ptr)
-	{
-		if (!_Obj.empty())
-		{
-			iterator i = _Obj.find(ptr);
-
-			if (i != _Obj.end())
-			{
-				if (i->second > 0)
-				{
-					i->second--;
-				}
-
-				size_t count = i->second;
-
-				if (count == 0)
-				{
-					_Obj.erase(i);
-				}
-
-				return count;
-			}
-		}
-
-		return 0;
-	}
+	size_t Increase(void* ptr);
+	size_t Decrease(void* ptr);
 };
 
 // 支持引用计数与垃圾回收的指针
@@ -102,19 +40,64 @@ template <typename T> class Ref : private RefCounter
 private:
 	T* _Ptr;
 
-	void _Increase()
+	_NODISCARD _Ret_notnull_ _Post_writable_byte_size_(_Size) _VCRT_ALLOCATOR
+		void* __CRTDECL operator new(size_t _Size)
+	{
+		return nullptr;
+	}
+
+	_NODISCARD _Ret_maybenull_ _Success_(return != NULL) _Post_writable_byte_size_(_Size) _VCRT_ALLOCATOR
+		void* __CRTDECL operator new(size_t _Size, std::nothrow_t const&) noexcept
+	{
+		return nullptr;
+	}
+
+	_NODISCARD _Ret_notnull_ _Post_writable_byte_size_(_Size) _VCRT_ALLOCATOR
+		void* __CRTDECL operator new[](size_t _Size)
+	{
+		return nullptr;
+	}
+
+		_NODISCARD _Ret_maybenull_ _Success_(return != NULL) _Post_writable_byte_size_(_Size) _VCRT_ALLOCATOR
+		void* __CRTDECL operator new[](size_t _Size, std::nothrow_t const&) noexcept
+	{
+		return nullptr;
+	}
+
+		void __CRTDECL operator delete(void* _Block) noexcept
+	{
+	}
+
+	void __CRTDECL operator delete(void* _Block, std::nothrow_t const&) noexcept
+	{
+	}
+
+	void __CRTDECL operator delete[](void* _Block) noexcept
+	{
+	}
+
+		void __CRTDECL operator delete[](void* _Block, std::nothrow_t const&) noexcept
+	{
+	}
+
+		void __CRTDECL operator delete(void* _Block, size_t _Size) noexcept
+	{
+	}
+
+	void __CRTDECL operator delete[](void* _Block, size_t _Size) noexcept
+	{
+	}
+
+		inline void _Increase()
 	{
 		Increase(_Ptr);
 	}
 
-	void _Decrease()
+	inline void _Decrease()
 	{
-		if (Decrease(_Ptr) == 0)
+		if (Decrease(_Ptr) == 0 && _Ptr)
 		{
-			if (_Ptr)
-			{
-				delete _Ptr;
-			}
+			delete _Ptr;
 		}
 	}
 

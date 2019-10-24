@@ -210,111 +210,33 @@ public:
 	}
 };
 
-// 数据类型
-enum DataType
-{
-	Unknown = -1, // 未知（不支持）
-
-	Void, // void（不支持）
-	Null, // std::nullptr_t（不支持）
-
-	Arithmetic, // 基本数据类型
-	Enum, // 枚举
-	Struct, // 结构体与类
-	Union, // 联合体
-
-	Array, // 数组（不支持）
-	Pointer, // 指针（不支持）
-	Function, // 函数（不支持）
-	Object, // 对象（不支持）
-
-	String, // std::string
-	List, // std::list
-	Map, // std::map
-	Set, // std::set
-	Vector // std::vector
-};
-
-// 元数据
-struct Metadata
-{
-	DataType Type;
-	size_t Size;
-	DataType KeyType;
-	DataType ValueType;
-};
-
 // 序列化器
 class Serializer
 {
-private:
-	ChunkBuilder _ChunkBuilder;
-	list<Metadata> _Metadata;
-	ChunkRef _Chunk;
-	size_t _Index;
-	byte* _Ptr;
-
-	inline void _Dispose()
+	// 数据类型
+	enum DataType
 	{
-		if (!_ChunkBuilder.IsEmpty())
-		{
-			_ChunkBuilder.Clear();
-		}
+		Unknown = -1, // 未知（不支持）
 
-		if (!_Metadata.empty())
-		{
-			_Metadata.clear();
-		}
+		Void, // void（不支持）
+		Null, // std::nullptr_t（不支持）
 
-		if (_Chunk != nullptr)
-		{
-			_Chunk = nullptr;
-		}
+		Arithmetic, // 基本数据类型
+		Enum, // 枚举
+		Struct, // 结构体与类
+		Union, // 联合体
 
-		_Index = 0;
-		_Ptr = nullptr;
-	}
+		Array, // 数组（不支持）
+		Pointer, // 指针（不支持）
+		Function, // 函数（不支持）
+		Object, // 对象（不支持）
 
-	Serializer(const Serializer&)
-	{
-	}
-
-	Serializer& operator=(const Serializer&)
-	{
-		return *this;
-	}
-
-	void PackStart()
-	{
-
-	}
-
-	Serializer& PackFinish(ChunkRef& chunk)
-	{
-		PackMetadata();
-
-		chunk = _ChunkBuilder.Combine();
-		_ChunkBuilder.Clear();
-		_Metadata.clear();
-
-		return *this;
-	}
-
-	Serializer& UnpackStart(const ChunkRef& chunk)
-	{
-		_Chunk = chunk;
-		_Index = 0;
-		_Ptr = (chunk != nullptr ? const_cast<byte*>(_Chunk->Ptr()) : nullptr);
-
-		UnpackMetadata();
-
-		return *this;
-	}
-
-	void UnpackFinish()
-	{
-		_Dispose();
-	}
+		String, // std::string
+		List, // std::list
+		Map, // std::map
+		Set, // std::set
+		Vector // std::vector
+	};
 
 	template<typename T> DataType GetDataType()
 	{
@@ -368,6 +290,97 @@ private:
 		}
 	}
 
+	// 元数据
+	struct Metadata
+	{
+	public:
+		DataType Type;
+		size_t Size;
+
+		Metadata() :
+			Type(Void),
+			Size(0)
+		{
+		}
+
+		Metadata(DataType type, size_t size) :
+			Type(type),
+			Size(size)
+		{
+		}
+	};
+
+private:
+	ChunkBuilder _ChunkBuilder;
+	list<Metadata> _Metadata;
+	ChunkRef _Chunk;
+	size_t _Index;
+	byte* _Ptr;
+
+	inline void _Dispose()
+	{
+		if (!_ChunkBuilder.IsEmpty())
+		{
+			_ChunkBuilder.Clear();
+		}
+
+		if (!_Metadata.empty())
+		{
+			_Metadata.clear();
+		}
+
+		if (_Chunk != nullptr)
+		{
+			_Chunk = nullptr;
+		}
+
+		_Index = 0;
+		_Ptr = nullptr;
+	}
+
+	Serializer(const Serializer&)
+	{
+	}
+
+	Serializer& operator=(const Serializer&)
+	{
+		return *this;
+	}
+
+	void PackStart()
+	{
+		_Dispose();
+	}
+
+	Serializer& PackFinish(ChunkRef& chunk)
+	{
+		PackMetadata();
+
+		chunk = _ChunkBuilder.Combine();
+
+		_Dispose();
+
+		return *this;
+	}
+
+	Serializer& UnpackStart(const ChunkRef& chunk)
+	{
+		_Dispose();
+
+		_Chunk = chunk;
+		_Index = 0;
+		_Ptr = (chunk != nullptr ? const_cast<byte*>(_Chunk->Ptr()) : nullptr);
+
+		UnpackMetadata();
+
+		return *this;
+	}
+
+	void UnpackFinish()
+	{
+		_Dispose();
+	}
+
 	void PackMetadata()
 	{
 		size_t sT = sizeof(Metadata);
@@ -396,7 +409,7 @@ private:
 
 			if (_Chunk->Size() >= sN + n * sizeof(Metadata))
 			{
-				Metadata md = {};
+				Metadata md;
 				size_t sT = sizeof(Metadata);
 
 				for (size_t i = 0; i < n; i++)
@@ -426,11 +439,7 @@ private:
 
 			_ChunkBuilder.Append(new Chunk(sT, (byte*)&data));
 
-			Metadata md = {};
-			md.Type = dt;
-			md.Size = sT;
-			md.KeyType = Void;
-			md.ValueType = Void;
+			Metadata md(dt, sT);
 
 			_Metadata.push_back(md);
 		}
@@ -452,7 +461,11 @@ private:
 
 				if (dt == md.Type && sT == md.Size)
 				{
-					memcpy((byte*)&data, _Ptr, sT);
+					if (_Index + sT <= _Chunk->Size())
+					{
+						memcpy((byte*)&data, _Ptr, sT);
+					}
+
 					_Index += sT;
 					_Ptr += sT;
 
@@ -462,6 +475,62 @@ private:
 					{
 						UnpackFinish();
 					}
+				}
+			}
+		}
+
+		return *this;
+	}
+
+	Serializer& PackString(const string& data)
+	{
+		DataType dt = GetDataType<string>();
+
+		if (_ChunkBuilder.IsEmpty())
+		{
+			PackStart();
+		}
+
+		size_t sT = data.size() + 1;
+
+		_ChunkBuilder.Append(new Chunk(sT, (byte*)data.c_str()));
+
+		Metadata md(dt, sT);
+
+		_Metadata.push_back(md);
+
+		return *this;
+	}
+
+	Serializer& UnpackString(string& data)
+	{
+		if (_Ptr)
+		{
+			DataType dt = GetDataType<string>();
+
+			Metadata md = _Metadata.front();
+
+			if (dt == md.Type && md.Size > 0)
+			{
+				size_t sT = md.Size;
+
+				if (_Index + sT <= _Chunk->Size())
+				{
+					char* str = new char[sT];
+
+					memcpy(str, _Ptr, sT);
+
+					data = string(str, sT - 1);
+				}
+
+				_Index += sT;
+				_Ptr += sT;
+
+				_Metadata.pop_front();
+
+				if (_Metadata.empty())
+				{
+					UnpackFinish();
 				}
 			}
 		}
@@ -519,9 +588,29 @@ public:
 		return UnpackStruct(data);
 	}
 
-	template<typename T> inline Serializer& operator>>(const T& data)
+	template<typename T> inline Serializer& operator>>(T& data)
 	{
 		return UnpackStruct(data);
+	}
+
+	inline Serializer& Pack(const string& data)
+	{
+		return PackString(data);
+	}
+
+	inline Serializer& operator<<(const string& data)
+	{
+		return PackString(data);
+	}
+
+	inline Serializer& Unpack(string& data)
+	{
+		return UnpackString(data);
+	}
+
+	inline Serializer& operator>>(string& data)
+	{
+		return UnpackString(data);
 	}
 };
 

@@ -15,31 +15,44 @@ Serialize is released under the GPLv3 license
 
 using namespace std;
 
+#define bool_to_str(val) ((val) ? ("true") : ("false"))
+
+struct MyStruct
+{
+	double d1;
+	int64_t l1;
+};
+
 int main()
 {
-	int a = 5;
-	double b = 12.7;
-	char c = 'A';
-	bool d = true;
-	long e = 15987;
+	MyStruct ms;
+	ms.d1 = 3.14159;
+	ms.l1 = 1048576;
+
+	int i1 = 255;
+	char c1 = 'C';
+	string s1 = "Hello world";
+	bool b1 = true;
 
 	ChunkRef cr;
 
-	Serializer sr;
-	sr << a << b << c << d << e >> cr;
+	Serializer sr1;
+	sr1 << i1 << c1 << ms << s1 << b1 >> cr;
 
-	a = 0;
-	b = 0;
-	c = 0;
-	d = 0;
-	e = 0;
+	ms.d1 = 0;
+	ms.l1 = 0;
+	i1 = 0;
+	c1 = 0;
+	s1 = "";
+	b1 = false;
 
-	sr << cr >> a >> b >> c >> d >> e;
+	Serializer sr2;
+	sr2 << cr >> i1 >> c1 >> ms >> s1 >> b1;
 
-	cout << a << endl;
-	cout << b << endl;
-	cout << c << endl;
-	cout << d << endl;
-	cout << e << endl;
-
+	cout << i1 << endl;
+	cout << c1 << endl;
+	cout << ms.d1 << endl;
+	cout << ms.l1 << endl;
+	cout << s1.c_str() << endl;
+	cout << bool_to_str(b1) << endl;
 }
