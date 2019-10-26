@@ -33,76 +33,17 @@ private:
 	size_t _Size;
 	byte* _Ptr;
 
-	inline void _Dispose()
-	{
-		_Size = 0;
-
-		if (_Ptr)
-		{
-			delete _Ptr;
-			_Ptr = nullptr;
-		}
-	}
+	void _Dispose();
 
 public:
-	Chunk() :
-		_Size(0),
-		_Ptr(nullptr)
-	{
-	}
-
-	Chunk(const Chunk& chunk)
-	{
-		_Size = chunk._Size;
-		_Ptr = (_Size > 0 ? new byte[_Size] : nullptr);
-
-		if (chunk._Ptr)
-		{
-			memcpy(_Ptr, chunk._Ptr, _Size);
-		}
-	}
-
-	Chunk(const size_t size, const byte* ptr)
-	{
-		_Size = size;
-		_Ptr = (_Size > 0 ? new byte[_Size] : nullptr);
-
-		if (ptr)
-		{
-			memcpy(_Ptr, ptr, _Size);
-		}
-	}
-
-	Chunk(const size_t size)
-	{
-		_Size = size;
-		_Ptr = (_Size > 0 ? new byte[_Size] : nullptr);
-	}
-
-	Chunk& operator=(const Chunk& chunk)
-	{
-		if (this == &chunk)
-		{
-			return *this;
-		}
-
-		_Dispose();
-
-		_Size = chunk._Size;
-		_Ptr = (_Size > 0 ? new byte[_Size] : nullptr);
-
-		if (chunk._Ptr)
-		{
-			memcpy(_Ptr, chunk._Ptr, _Size);
-		}
-
-		return *this;
-	}
-
-	virtual ~Chunk()
-	{
-		_Dispose();
-	}
+	Chunk();
+	Chunk(const Chunk& chunk);
+	Chunk(Chunk&& chunk);
+	Chunk(const size_t size);
+	Chunk(const size_t size, const byte* ptr);
+	Chunk& operator=(const Chunk& chunk);
+	Chunk& operator=(Chunk&& chunk);
+	virtual ~Chunk();
 
 	inline size_t Size() const
 	{
@@ -123,43 +64,13 @@ class ChunkBuilder
 private:
 	list<ChunkRef> _Chunks;
 
-	inline void _Dispose()
-	{
-		if (!_Chunks.empty())
-		{
-			_Chunks.clear();
-		}
-	}
+	void _Dispose();
 
 public:
-	ChunkBuilder() :
-		_Chunks()
-	{
-	}
-
-	ChunkBuilder(const ChunkBuilder& chunkBuilder)
-	{
-		_Chunks = chunkBuilder._Chunks;
-	}
-
-	ChunkBuilder& operator=(const ChunkBuilder& chunkBuilder)
-	{
-		if (this == &chunkBuilder)
-		{
-			return *this;
-		}
-
-		_Dispose();
-
-		_Chunks = chunkBuilder._Chunks;
-
-		return *this;
-	}
-
-	virtual ~ChunkBuilder()
-	{
-		_Dispose();
-	}
+	ChunkBuilder();
+	ChunkBuilder(const ChunkBuilder& chunkBuilder);
+	ChunkBuilder& operator=(const ChunkBuilder& chunkBuilder);
+	virtual ~ChunkBuilder();
 
 	inline void Append(const ChunkRef& chunk)
 	{
@@ -181,33 +92,7 @@ public:
 		return _Chunks.empty();
 	}
 
-	ChunkRef Combine()
-	{
-		size_t size = 0;
-
-		for (list<ChunkRef>::const_iterator i = _Chunks.begin(); i != _Chunks.end(); ++i)
-		{
-			size += (*i)->Size();
-		}
-
-		ChunkRef chunk = new Chunk(size);
-		byte* ptr = const_cast<byte*>(chunk->Ptr());
-
-		for (list<ChunkRef>::const_iterator i = _Chunks.begin(); i != _Chunks.end(); ++i)
-		{
-			size_t s = (*i)->Size();
-
-			if (s > 0)
-			{
-				memcpy(ptr, (*i)->Ptr(), s);
-				ptr += s;
-			}
-		}
-
-		_Dispose();
-
-		return chunk;
-	}
+	ChunkRef Combine();
 };
 
 // 序列化器
@@ -324,289 +209,31 @@ private:
 	size_t _Index;
 	byte* _Ptr;
 
-	inline void _Dispose()
-	{
-		if (!_ChunkBuilder.IsEmpty())
-		{
-			_ChunkBuilder.Clear();
-		}
+	void _Dispose();
 
-		if (!_Metadata.empty())
-		{
-			_Metadata.clear();
-		}
+	Serializer(const Serializer&);
+	Serializer& operator=(const Serializer&);
 
-		if (_Chunk != nullptr)
-		{
-			_Chunk = nullptr;
-		}
+	void PackStart();
+	Serializer& PackFinish(ChunkRef& chunk);
+	Serializer& UnpackStart(const ChunkRef& chunk);
+	void UnpackFinish();
 
-		_Index = 0;
-		_Ptr = nullptr;
-	}
+	void PackMetadata();
+	void UnpackMetadata();
 
-	Serializer(const Serializer&)
-	{
-	}
+	Serializer& PackBinary(const ChunkRef& data);
+	Serializer& UnpackBinary(ChunkRef& data);
 
-	Serializer& operator=(const Serializer&)
-	{
-		return *this;
-	}
+	template<typename T> Serializer& PackStruct(const T& data);
+	template<typename T> Serializer& UnpackStruct(T& data);
 
-	void PackStart()
-	{
-		_Dispose();
-	}
-
-	Serializer& PackFinish(ChunkRef& chunk)
-	{
-		PackMetadata();
-
-		chunk = _ChunkBuilder.Combine();
-
-		_Dispose();
-
-		return *this;
-	}
-
-	Serializer& UnpackStart(const ChunkRef& chunk)
-	{
-		_Dispose();
-
-		_Chunk = chunk;
-		_Index = 0;
-		_Ptr = (chunk != nullptr ? const_cast<byte*>(_Chunk->Ptr()) : nullptr);
-
-		UnpackMetadata();
-
-		return *this;
-	}
-
-	void UnpackFinish()
-	{
-		_Dispose();
-	}
-
-	void PackMetadata()
-	{
-		size_t sT = sizeof(Metadata);
-
-		for (list<Metadata>::const_reverse_iterator i = _Metadata.rbegin(); i != _Metadata.rend(); ++i)
-		{
-			_ChunkBuilder.Prepend(new Chunk(sT, (byte*)(&(*i))));
-		}
-
-		size_t n = _Metadata.size();
-		size_t sN = sizeof(size_t);
-
-		_ChunkBuilder.Prepend(new Chunk(sN, (byte*)(&n)));
-	}
-
-	void UnpackMetadata()
-	{
-		if (_Ptr)
-		{
-			size_t n = 0;
-			size_t sN = sizeof(size_t);
-
-			memcpy(&n, _Ptr, sN);
-			_Index += sN;
-			_Ptr += sN;
-
-			if (_Chunk->Size() >= sN + n * sizeof(Metadata))
-			{
-				Metadata md;
-				size_t sT = sizeof(Metadata);
-
-				for (size_t i = 0; i < n; i++)
-				{
-					memcpy(&md, _Ptr, sT);
-					_Index += sT;
-					_Ptr += sT;
-
-					_Metadata.push_back(md);
-				}
-			}
-		}
-	}
-
-	Serializer& PackBinary(const ChunkRef& data)
-	{
-		DataType dt = GetDataType<ChunkRef>();
-
-		if (_ChunkBuilder.IsEmpty())
-		{
-			PackStart();
-		}
-
-		size_t sT = data->Size();
-
-		_ChunkBuilder.Append(data.ShallowCopy());
-
-		Metadata md(dt, sT);
-
-		_Metadata.push_back(md);
-
-		return *this;
-	}
-
-	Serializer& UnpackBinary(ChunkRef& data)
-	{
-		if (_Ptr)
-		{
-			DataType dt = GetDataType<ChunkRef>();
-
-			Metadata md = _Metadata.front();
-
-			if (dt == md.Type)
-			{
-				size_t sT = md.Size;
-
-				if (_Index + sT <= _Chunk->Size())
-				{
-					data = new Chunk(sT, _Ptr);
-				}
-
-				_Index += sT;
-				_Ptr += sT;
-
-				_Metadata.pop_front();
-
-				if (_Metadata.empty() || _Index >= _Chunk->Size())
-				{
-					UnpackFinish();
-				}
-			}
-		}
-
-		return *this;
-	}
-
-	template<typename T> Serializer& PackStruct(const T& data)
-	{
-		DataType dt = GetDataType<T>();
-
-		if (dt == Arithmetic || dt == Enum || dt == Struct || dt == Union)
-		{
-			if (_ChunkBuilder.IsEmpty())
-			{
-				PackStart();
-			}
-
-			size_t sT = sizeof(T);
-
-			_ChunkBuilder.Append(new Chunk(sT, (byte*)&data));
-
-			Metadata md(dt, sT);
-
-			_Metadata.push_back(md);
-		}
-
-		return *this;
-	}
-
-	template<typename T> Serializer& UnpackStruct(T& data)
-	{
-		if (_Ptr)
-		{
-			DataType dt = GetDataType<T>();
-
-			if (dt == Arithmetic || dt == Enum || dt == Struct || dt == Union)
-			{
-				Metadata md = _Metadata.front();
-
-				size_t sT = sizeof(T);
-
-				if (dt == md.Type && sT == md.Size)
-				{
-					if (_Index + sT <= _Chunk->Size())
-					{
-						memcpy((byte*)&data, _Ptr, sT);
-					}
-
-					_Index += sT;
-					_Ptr += sT;
-
-					_Metadata.pop_front();
-
-					if (_Metadata.empty() || _Index >= _Chunk->Size())
-					{
-						UnpackFinish();
-					}
-				}
-			}
-		}
-
-		return *this;
-	}
-
-	Serializer& PackString(const string& data)
-	{
-		DataType dt = GetDataType<string>();
-
-		if (_ChunkBuilder.IsEmpty())
-		{
-			PackStart();
-		}
-
-		size_t sT = data.size() + 1;
-
-		_ChunkBuilder.Append(new Chunk(sT, (byte*)data.c_str()));
-
-		Metadata md(dt, sT);
-
-		_Metadata.push_back(md);
-
-		return *this;
-	}
-
-	Serializer& UnpackString(string& data)
-	{
-		if (_Ptr)
-		{
-			DataType dt = GetDataType<string>();
-
-			Metadata md = _Metadata.front();
-
-			if (dt == md.Type && md.Size > 0)
-			{
-				size_t sT = md.Size;
-
-				if (_Index + sT <= _Chunk->Size())
-				{
-					data = string((char*)_Ptr, sT - 1);
-				}
-
-				_Index += sT;
-				_Ptr += sT;
-
-				_Metadata.pop_front();
-
-				if (_Metadata.empty() || _Index >= _Chunk->Size())
-				{
-					UnpackFinish();
-				}
-			}
-		}
-
-		return *this;
-	}
+	Serializer& PackString(const string& data);
+	Serializer& UnpackString(string& data);
 
 public:
-	Serializer() :
-		_ChunkBuilder(ChunkBuilder()),
-		_Metadata(),
-		_Chunk(nullptr),
-		_Index(0),
-		_Ptr(nullptr)
-	{
-	}
-
-	virtual ~Serializer()
-	{
-		_Dispose();
-	}
+	Serializer();
+	virtual ~Serializer();
 
 	inline Serializer& ToBinary(ChunkRef& chunk)
 	{
@@ -702,36 +329,13 @@ public:
 class ISerializable
 {
 private:
-	inline void _Dispose()
-	{
-
-	}
+	void _Dispose();
 
 public:
-	ISerializable()
-	{
-
-	}
-
-	ISerializable(const ISerializable& iSerializable)
-	{
-
-	}
-
-	ISerializable& operator=(const ISerializable& iSerializable)
-	{
-		if (this == &iSerializable)
-		{
-			return *this;
-		}
-
-		return *this;
-	}
-
-	virtual ~ISerializable()
-	{
-		_Dispose();
-	}
+	ISerializable();
+	ISerializable(const ISerializable& iSerializable);
+	ISerializable& operator=(const ISerializable& iSerializable);
+	virtual ~ISerializable();
 
 protected:
 	virtual void Serialize(ChunkRef& chunk) = 0;
@@ -739,3 +343,61 @@ protected:
 	virtual void Deserialize(const ChunkRef& chunk) = 0;
 	virtual void Deserialize(const size_t size, const byte* ptr) = 0;
 };
+
+template<typename T> Serializer& Serializer::PackStruct(const T& data)
+{
+	DataType dt = GetDataType<T>();
+
+	if (dt == Arithmetic || dt == Enum || dt == Struct || dt == Union)
+	{
+		if (_ChunkBuilder.IsEmpty())
+		{
+			PackStart();
+		}
+
+		size_t sT = sizeof(T);
+
+		_ChunkBuilder.Append(new Chunk(sT, (byte*)&data));
+
+		Metadata md(dt, sT);
+
+		_Metadata.push_back(md);
+	}
+
+	return *this;
+}
+
+template<typename T> Serializer& Serializer::UnpackStruct(T& data)
+{
+	if (_Ptr)
+	{
+		DataType dt = GetDataType<T>();
+
+		if (dt == Arithmetic || dt == Enum || dt == Struct || dt == Union)
+		{
+			Metadata md = _Metadata.front();
+
+			size_t sT = sizeof(T);
+
+			if (dt == md.Type && sT == md.Size)
+			{
+				if (_Index + sT <= _Chunk->Size())
+				{
+					memcpy((byte*)&data, _Ptr, sT);
+				}
+
+				_Index += sT;
+				_Ptr += sT;
+
+				_Metadata.pop_front();
+
+				if (_Metadata.empty() || _Index >= _Chunk->Size())
+				{
+					UnpackFinish();
+				}
+			}
+		}
+	}
+
+	return *this;
+}

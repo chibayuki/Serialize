@@ -97,3 +97,27 @@ size_t RefCounter::Decrease(void* ptr)
 		return 0;
 	}
 }
+
+#if DEBUG
+size_t RefCounter::GetCount(void* ptr)
+{
+	if (ptr)
+	{
+		if (!_Obj.empty())
+		{
+			iterator i = _Obj.find(ptr);
+
+			if (i != _Obj.end())
+			{
+				return i->second;
+			}
+		}
+
+		return 0;
+	}
+	else
+	{
+		return 0;
+	}
+}
+#endif
