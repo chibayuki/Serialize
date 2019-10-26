@@ -2,7 +2,7 @@
 Copyright © 2019 chibayuki@foxmail.com
 
 RefCounter
-Version 19.10.23.0000
+Version 19.10.26.0000
 
 This file is part of RefCounter
 
@@ -12,6 +12,108 @@ RefCounter is released under the GPLv3 license
 #include "RefCounter.h"
 
 map<void*, size_t> RefCounter::_Obj;
+
+void* RefCounter::operator new(size_t _Size)
+{
+	return ::operator new(_Size);
+}
+
+void* RefCounter::operator new(size_t _Size, const std::nothrow_t& _Tag) noexcept
+{
+	return ::operator new(_Size, _Tag);
+}
+
+void* RefCounter::operator new[](size_t _Size)
+{
+	return ::operator new[](_Size);
+}
+
+void* RefCounter::operator new[](size_t _Size, const std::nothrow_t& _Tag) noexcept
+{
+	return ::operator new[](_Size, _Tag);
+}
+
+void RefCounter::operator delete(void* _Block) noexcept
+{
+	::operator delete(_Block);
+}
+
+void RefCounter::operator delete(void* _Block, const std::nothrow_t& _Tag) noexcept
+{
+	::operator delete(_Block, _Tag);
+}
+
+void RefCounter::operator delete[](void* _Block) noexcept
+{
+	::operator delete[](_Block);
+}
+
+void RefCounter::operator delete[](void* _Block, const std::nothrow_t& _Tag) noexcept
+{
+	::operator delete[](_Block, _Tag);
+}
+
+void RefCounter::operator delete(void* _Block, size_t _Size) noexcept
+{
+	::operator delete(_Block, _Size);
+}
+
+void RefCounter::operator delete[](void* _Block, size_t _Size) noexcept
+{
+	::operator delete[](_Block, _Size);
+}
+
+#ifdef __cpp_aligned_new
+void* RefCounter::operator new(size_t _Size, std::align_val_t _Al)
+{
+	return ::operator new(_Size, _Al);
+}
+
+void* RefCounter::operator new(size_t _Size, std::align_val_t _Al, const std::nothrow_t& _Tag) noexcept
+{
+	return ::operator new(_Size, _Al, _Tag);
+}
+
+void* RefCounter::operator new[](size_t _Size, std::align_val_t _Al)
+{
+	return ::operator new[](_Size, _Al);
+}
+
+void* RefCounter::operator new[](size_t _Size, std::align_val_t _Al, const std::nothrow_t& _Tag) noexcept
+{
+	return ::operator new[](_Size, _Al, _Tag);
+}
+
+void RefCounter::operator delete(void* _Block, std::align_val_t _Al) noexcept
+{
+	::operator delete(_Block, _Al);
+}
+
+void RefCounter::operator delete(void* _Block, std::align_val_t _Al, const std::nothrow_t& _Tag) noexcept
+{
+	::operator delete(_Block, _Al, _Tag);
+}
+
+void RefCounter::operator delete[](void* _Block, std::align_val_t _Al) noexcept
+{
+	::operator delete[](_Block, _Al);
+}
+
+void RefCounter::operator delete[](void* _Block, std::align_val_t _Al, const std::nothrow_t& _Tag) noexcept
+{
+	::operator delete[](_Block, _Al, _Tag);
+}
+
+void RefCounter::operator delete(void* _Block, size_t _Size, std::align_val_t _Al) noexcept
+{
+	::operator delete(_Block, _Size, _Al);
+}
+
+void RefCounter::operator delete[](void* _Block, size_t _Size, std::align_val_t _Al) noexcept
+{
+	::operator delete[](_Block, _Size, _Al);
+}
+#endif
 
 RefCounter::RefCounter()
 {

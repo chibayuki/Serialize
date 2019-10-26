@@ -2,7 +2,7 @@
 Copyright © 2019 chibayuki@foxmail.com
 
 Serialize.Demo
-Version 19.10.20.0000
+Version 19.10.26.0000
 
 This file is part of Serialize
 

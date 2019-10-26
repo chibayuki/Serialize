@@ -2,7 +2,7 @@
 Copyright © 2019 chibayuki@foxmail.com
 
 RefCounter
-Version 19.10.25.0000
+Version 19.10.26.0000
 
 This file is part of RefCounter
 
@@ -15,7 +15,7 @@ RefCounter is released under the GPLv3 license
 
 #include <map>
 
-using namespace std;
+using std::map;
 
 // 引用计数器
 class RefCounter
@@ -26,6 +26,32 @@ private:
 	using pair = map<void*, size_t>::value_type;
 	using iterator = map<void*, size_t>::iterator;
 
+	__declspec(allocator) static void* __cdecl operator new(size_t _Size);
+	__declspec(allocator) static void* __cdecl operator new(size_t _Size, const std::nothrow_t& _Tag) noexcept;
+	__declspec(allocator) static void* __cdecl operator new[](size_t _Size);
+	__declspec(allocator) static void* __cdecl operator new[](size_t _Size, const std::nothrow_t& _Tag) noexcept;
+
+	static void __cdecl operator delete(void* _Block) noexcept;
+	static void __cdecl operator delete(void* _Block, const std::nothrow_t& _Tag) noexcept;
+	static void __cdecl operator delete[](void* _Block) noexcept;
+	static void __cdecl operator delete[](void* _Block, const std::nothrow_t& _Tag) noexcept;
+	static void __cdecl operator delete(void* _Block, size_t _Size) noexcept;
+	static void __cdecl operator delete[](void* _Block, size_t _Size) noexcept;
+
+#ifdef __cpp_aligned_new
+	__declspec(allocator) static void* __cdecl operator new(size_t _Size, std::align_val_t _Al);
+	__declspec(allocator) static void* __cdecl operator new(size_t _Size, std::align_val_t _Al, const std::nothrow_t& _Tag) noexcept;
+	__declspec(allocator) static void* __cdecl operator new[](size_t _Size, std::align_val_t _Al);
+	__declspec(allocator) static void* __cdecl operator new[](size_t _Size, std::align_val_t _Al, const std::nothrow_t& _Tag) noexcept;
+
+	static void __cdecl operator delete(void* _Block, std::align_val_t _Al) noexcept;
+	static void __cdecl operator delete(void* _Block, std::align_val_t _Al, const std::nothrow_t& _Tag) noexcept;
+	static void __cdecl operator delete[](void* _Block, std::align_val_t _Al) noexcept;
+	static void __cdecl operator delete[](void* _Block, std::align_val_t _Al, const std::nothrow_t& _Tag) noexcept;
+	static void __cdecl operator delete(void* _Block, size_t _Size, std::align_val_t _Al) noexcept;
+	static void __cdecl operator delete[](void* _Block, size_t _Size, std::align_val_t _Al) noexcept;
+#endif
+
 protected:
 	RefCounter();
 	RefCounter(const RefCounter&);
@@ -34,6 +60,11 @@ protected:
 
 	size_t Increase(void* ptr);
 	size_t Decrease(void* ptr);
+
+	inline const RefCounter* operator&() const
+	{
+		return this;
+	}
 
 #if DEBUG
 public:
@@ -46,54 +77,6 @@ template <typename T> class Ref : private RefCounter
 {
 private:
 	T* _Ptr;
-
-	[[nodiscard]]
-	__declspec(allocator) void* __cdecl operator new(size_t _Size)
-	{
-		return nullptr;
-	}
-
-	[[nodiscard]]
-	__declspec(allocator) void* __cdecl operator new(size_t _Size, std::nothrow_t const&) noexcept
-	{
-		return nullptr;
-	}
-
-	[[nodiscard]]
-	__declspec(allocator) void* __cdecl operator new[](size_t _Size)
-	{
-		return nullptr;
-	}
-
-	[[nodiscard]]
-	__declspec(allocator) void* __cdecl operator new[](size_t _Size, std::nothrow_t const&) noexcept
-	{
-		return nullptr;
-	}
-
-	void __cdecl operator delete(void* _Block) noexcept
-	{
-	}
-
-	void __cdecl operator delete(void* _Block, std::nothrow_t const&) noexcept
-	{
-	}
-
-	void __cdecl operator delete[](void* _Block) noexcept
-	{
-	}
-
-	void __cdecl operator delete[](void* _Block, std::nothrow_t const&) noexcept
-	{
-	}
-
-	void __cdecl operator delete(void* _Block, size_t _Size) noexcept
-	{
-	}
-
-	void __cdecl operator delete[](void* _Block, size_t _Size) noexcept
-	{
-	}
 
 	inline void _Attach()
 	{
@@ -327,6 +310,11 @@ public:
 	inline operator T() const
 	{
 		return *_Ptr;
+	}
+
+	inline explicit operator bool() const
+	{
+		return (_Ptr != nullptr);
 	}
 
 	inline Ref RefCopy() const

@@ -2,7 +2,7 @@
 Copyright © 2019 chibayuki@foxmail.com
 
 Serialize
-Version 19.10.25.0000
+Version 19.10.26.0000
 
 This file is part of Serialize
 
@@ -14,7 +14,6 @@ Serialize is released under the GPLv3 license
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <iterator>
 #include <map>
 #include <set>
 #include <list>
@@ -22,7 +21,11 @@ Serialize is released under the GPLv3 license
 
 #include "RefCounter.h"
 
-using namespace std;
+using std::string;
+using std::map;
+using std::set;
+using std::list;
+using std::vector;
 
 using byte = uint8_t;
 
@@ -39,7 +42,7 @@ public:
 	Chunk();
 	Chunk(const Chunk& chunk);
 	Chunk(Chunk&& chunk);
-	Chunk(const size_t size);
+	explicit Chunk(const size_t size);
 	Chunk(const size_t size, const byte* ptr);
 	Chunk& operator=(const Chunk& chunk);
 	Chunk& operator=(Chunk&& chunk);
@@ -128,51 +131,51 @@ class Serializer
 
 	template<typename T> DataType GetDataType()
 	{
-		if (is_same<T, ChunkRef>::value)
+		if (std::is_same<T, ChunkRef>::value)
 		{
 			return Binary;
 		}
-		else if (is_same<T, string>::value)
+		else if (std::is_same<T, string>::value)
 		{
 			return String;
 		}
-		else if (is_void<T>::value)
+		else if (std::is_void<T>::value)
 		{
 			return Void;
 		}
-		else if (is_null_pointer<T>::value)
+		else if (std::is_null_pointer<T>::value)
 		{
 			return Null;
 		}
-		else if (is_arithmetic<T>::value)
+		else if (std::is_arithmetic<T>::value)
 		{
 			return Arithmetic;
 		}
-		else if (is_enum<T>::value)
+		else if (std::is_enum<T>::value)
 		{
 			return Enum;
 		}
-		else if (is_class<T>::value)
+		else if (std::is_class<T>::value)
 		{
 			return Struct;
 		}
-		else if (is_union<T>::value)
+		else if (std::is_union<T>::value)
 		{
 			return Union;
 		}
-		else if (is_array<T>::value)
+		else if (std::is_array<T>::value)
 		{
 			return Array;
 		}
-		else if (is_pointer<T>::value || is_member_pointer<T>::value)
+		else if (std::is_pointer<T>::value || std::is_member_pointer<T>::value)
 		{
 			return Pointer;
 		}
-		else if (is_function<T>::value)
+		else if (std::is_function<T>::value)
 		{
 			return Function;
 		}
-		else if (is_object<T>::value)
+		else if (std::is_object<T>::value)
 		{
 			return Object;
 		}
@@ -325,25 +328,6 @@ public:
 	}
 };
 
-// 表示对象支持序列化
-class ISerializable
-{
-private:
-	void _Dispose();
-
-public:
-	ISerializable();
-	ISerializable(const ISerializable& iSerializable);
-	ISerializable& operator=(const ISerializable& iSerializable);
-	virtual ~ISerializable();
-
-protected:
-	virtual void Serialize(ChunkRef& chunk) = 0;
-	virtual void Serialize(size_t& size, byte*& ptr) = 0;
-	virtual void Deserialize(const ChunkRef& chunk) = 0;
-	virtual void Deserialize(const size_t size, const byte* ptr) = 0;
-};
-
 template<typename T> Serializer& Serializer::PackStruct(const T& data)
 {
 	DataType dt = GetDataType<T>();
@@ -401,3 +385,22 @@ template<typename T> Serializer& Serializer::UnpackStruct(T& data)
 
 	return *this;
 }
+
+// 表示对象支持序列化
+class ISerializable
+{
+private:
+	void _Dispose();
+
+public:
+	ISerializable();
+	ISerializable(const ISerializable& iSerializable);
+	ISerializable& operator=(const ISerializable& iSerializable);
+	virtual ~ISerializable();
+
+protected:
+	virtual void Serialize(ChunkRef& chunk) = 0;
+	virtual void Serialize(size_t& size, byte*& ptr) = 0;
+	virtual void Deserialize(const ChunkRef& chunk) = 0;
+	virtual void Deserialize(const size_t size, const byte* ptr) = 0;
+};
